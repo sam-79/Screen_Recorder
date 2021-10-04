@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screen Recorder</title>
+
+    <style>
+        h1 {
+            font-size: 5vh;
+            margin: 20px;
+            text-align: center;
+        }
+
+        .btn-box {
+            display: flex;
+            height: 50vh;
+            width: 50vw;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            margin: auto;
+
+        }
+
+        .btn {
+            display: block;
+            height: 25%;
+            width: 75%;
+            border: 0px;
+            border-radius: 10px;
+            margin: 20px;
+            font-size: xx-large;
+            font-family: monospace;
+            box-shadow: 0px 0px 15px #3100d2ba;
+        }
+
+        .btn:hover {
+            box-shadow: 0px 0px 15px #a710f9ba;
+        }
+
+        #video-box {
+            width: 100%;
+        }
+    </style>
+</head>
+
+<script>
+
+
+    async function startRecording() {
+
+        var options;
+        if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
+            options = { mimeType: 'video/webm;codecs=vp9' };
+        }
+        else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) {
+            options = { mimeType: 'video/webm;codecs=vp9' };
+        }
+        else {
+            options = { mimeType: 'video/webm' };
+        }
+
+        var screen_chunks = [];
+        //access
+        let stream1 = await navigator.mediaDevices.getDisplayMedia({
+            video: true,
+            audio: document.getElementById('audio-check').checked
+        });
+
+
+        // start recording for screen
+        recorder1 = new MediaRecorder(stream1, options);
+
+        //start event
+        recorder1.onstart = start;
+        //when data available
+        recorder1.ondataavailable = e => {
+            if (e.data.size > 0) {
+                screen_chunks.push(e.data);
+            }
+        }
+        //pause event
+        recorder1.onpause = pause;
+        // resume event
+        recorder1.onresume = resume;
+
+
+        //stop event
+        recorder1.onstop = e => {
+            // recorder2.stop();
+            stop(stream1, screen_chunks, 'Screen_' + stream1.id);
+        };
+
+        recorder1.onerror = e => { window.alert(e) };
+
+        //display stream to screen element
+        document.getElementById('video-box').srcObject = stream1;
+
+        recorder1.start();
+
+        // for self video
+        if (document.getElementById('cam-check').checked) {
+
+            var cam_chunks = [];
+            stream2 = await navigator.mediaDevices.getUserMedia({
+                video: false,
+                audio: document.getElementById('audio-check').checked
+            });
+
+
+            // start recording for camera
+            recorder2 = new MediaRecorder(stream2, options);
+
+            //start event
+            recorder2.onstart = start;
+            //when data available
+            recorder2.ondataavailable = e => {
+                if (e.data.size > 0) {
+                    cam_chunks.push(e.data);
+                }
+            }
+            //pause event
+            recorder2.onpause = pause;
+            // resume event
+            recorder2.onresume = resume;
+            //stop event
+            recorder2.onstop = e => {
+                // recorder2.stop();
+                stop(stream2, cam_chunks, 'Camera_' + stream2.id);
+            };
+
+            //display stream to video element
+            document.getElementById('cam-video-box').srcObject = stream2;
+            recorder2.start();
+        }
+    }
+
+    function stopRecording(params) {
+        recorder1.stop();
+        if (document.getElementById('cam-check').checked) {
+            recorder2.stop();
+        }
+    }
+
+    function start(params) {
+        document.getElementById('start-record').disabled = true;
+        document.getElementById('pause-record').disabled = false;
+        document.getElementById('stop-record').disabled = false;
+    }
+    function pause(params) {
+        document.getElementById('pause-record').innerText = 'Resume';
+        document.getElementById('pause-record').onclick = () => { recorder1.resume(); recorder2.resume(); }
+    }
+    function resume(params) {
+        document.getElementById('pause-record').innerText = 'Pause';
+        document.getElementById('pause-record').onclick = () => { recorder1.pause(); recorder2.pause(); }
+    }
+
+
+    function stop(stream, chunks, filename) {
+        stream.getTracks()[0].stop();
+
+        const blob = new Blob(chunks, { type: chunks[0].type });
+
+
+        document.getElementById('start-record').disabled = false;
+        document.getElementById('pause-record').disabled = true;
+        document.getElementById('stop-record').disabled = true;
+
+
+        if (window.navigator.msSaveOrOpenBlob) {
+            window.navigator.msSaveBlob(blob, filename);
+        }
+        else {
+            var elem = window.document.createElement('a');
+            elem.href = window.URL.createObjectURL(blob);
+            elem.download = filename;
+            document.body.appendChild(elem);
+            elem.click();
+            document.body.removeChild(elem);
+        }
+
+    }
+
+</script>
+
+<body>
+
+    <header>
+        <h1>Screen Recorder</h1>
+    </header>
+
+
+    <div class="btn-box">
+        <div>
+            <input type="checkbox" name="audio" id="audio-check">
+            <label for="audio-check">Audio</label>
+
+            <input type="checkbox" name="camera" id="cam-check">
+            <label for="cam-check">Self Video</label>
+        </div>
+        <button onclick="startRecording();" class="btn" id="start-record">
+            Start Recording
+        </button>
+
+        <button onclick="recorder1.pause(); recorder2.pause();" class="btn" id="pause-record" disabled>
+            Pause Recording
+        </button>
+
+        <button onclick="stopRecording();" class="btn" id="stop-record" disabled>
+            Stop Recording
+        </button>
+    </div>
+
+    <div class="btn-box">
+        <video id="video-box" autoplay muted></video>
+    </div>
+    <div class="btn-box">
+        <video id="cam-video-box" autoplay muted></video>
+    </div>
+
+</body>
+
+</html>
